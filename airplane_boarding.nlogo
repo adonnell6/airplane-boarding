@@ -27,7 +27,7 @@ turtles-own [
 ]
 
 patches-own [
-  ptype
+;  plabel
   section
   correct-aisle
   seat-type
@@ -63,10 +63,10 @@ end
 to random-board-plane
   ; if in the airport, move towards the bridge
   ; this is where the boarding strategies are going to come into play....
-  if [ptype] of patch-here = "af" [
+  if [plabel] of patch-here = "af" [
     let here [patch-here] of self
-    let target min-one-of (patches with [ptype = "b"]) [distance here]
-    let next min-one-of (patch-set patch-here neighbors4) with [count turtles-here = 0 and pcolor = 117 and ptype != "s"] [distance target]
+    let target min-one-of (patches with [plabel = "b"]) [distance here]
+    let next min-one-of (patch-set patch-here neighbors4) with [count turtles-here = 0 and pcolor = 117 and plabel != "s"] [distance target]
     if next != nobody [
       move-to next
     ]
@@ -76,10 +76,10 @@ end
 to wilma-board-plane
   ; if in the airport, move towards the bridge
   ; this is where the boarding strategies are going to come into play....
-  if [ptype] of patch-here = "af" [
+  if [plabel] of patch-here = "af" [
     let here [patch-here] of self
-    let target min-one-of (patches with [ptype = "b"]) [distance here]
-    let next min-one-of (patch-set patch-here neighbors4) with [count turtles-here = 0 and pcolor = 117 and ptype != "s"] [distance target]
+    let target min-one-of (patches with [plabel = "b"]) [distance here]
+    let next min-one-of (patch-set patch-here neighbors4) with [count turtles-here = 0 and pcolor = 117 and plabel != "s"] [distance target]
     if next != nobody [
       move-to next
     ]
@@ -89,10 +89,10 @@ end
 to back-to-front-board-plane
   ; if in the airport, move towards the bridge
   ; this is where the boarding strategies are going to come into play....
-  if [ptype] of patch-here = "af" [
+  if [plabel] of patch-here = "af" [
     let here [patch-here] of self
-    let target min-one-of (patches with [ptype = "b"]) [distance here]
-    let next min-one-of (patch-set patch-here neighbors4) with [count turtles-here = 0 and pcolor = 117 and ptype != "s"] [distance target]
+    let target min-one-of (patches with [plabel = "b"]) [distance here]
+    let next min-one-of (patch-set patch-here neighbors4) with [count turtles-here = 0 and pcolor = 117 and plabel != "s"] [distance target]
     if next != nobody [
       move-to next
     ]
@@ -109,8 +109,17 @@ to move-to-seat
         move-to target
       ]
     ]
+    ; if in the bridge, move to the aisle
+    let ds desired-seat
+    if [plabel] of patch-here = "b" or [plabel] of patch-here = "pf" or ([plabel] of patch-here = "a" and [pycor] of patch-here != [correct-aisle] of ds)[
+      let target one-of patches with [pxcor = 14 and plabel = "a" and pycor = [correct-aisle] of ds]
+      let next min-one-of (patch-set patch-here neighbors4) with [count turtles-here = 0 and plabel = "a" or plabel = "pf" or plabel = "b"] [distance target]
+      if next != nobody [
+        move-to next
+      ]
+    ]
     ; if right before your row (equal with the seat in front of you)
-    if [ptype] of patch-here = "a" and [pxcor] of patch-here = [pxcor] of desired-row + 1 [
+    if [plabel] of patch-here = "a" and [pxcor] of patch-here = [pxcor] of desired-row + 1 [
       if bag? [
        set delay-time delay-time + 3 + random 4
       ]
@@ -118,31 +127,21 @@ to move-to-seat
       set delay-time delay-time + (people-to-wait-for * 5)
     ]
     ; if near your row, move towards your seat
-    if [ptype] of patch-here != "af" and [pxcor] of patch-here = [pxcor] of desired-row [
+    if [plabel] of patch-here != "af" and [pxcor] of patch-here = [pxcor] of desired-row [
       if delay-time = 0 [
         let target [desired-row] of self
-        let next min-one-of (patch-set patch-here neighbors4) with [count turtles-here = 0 and ptype != "s"] [distance target]
+        let next min-one-of (patch-set patch-here neighbors4) with [count turtles-here = 0 and plabel != "s"] [distance target]
         if next != nobody and next != patch-here [
           move-to next
         ]
       ]
     ]
-    ; if in the bridge, move to the aisle
-    let ds desired-seat
-    if [ptype] of patch-here = "b" or [ptype] of patch-here = "pf" or ([ptype] of patch-here = "a" and [pycor] of patch-here != [correct-aisle] of ds)[
-      let target one-of patches with [pxcor = 14 and ptype = "a" and pycor = [correct-aisle] of ds]
-      let next min-one-of (patch-set patch-here neighbors4) with [count turtles-here = 0 and ptype != "w" and ptype != "r" and ptype != "s"] [distance target]
-      if next != nobody [
-        move-to next
-      ]
-    ]
-
     ; if in the aisle, move towards your row
-    if [ptype] of patch-here = "a" [
+    if [plabel] of patch-here = "a" [
       ;; want to move towards the "a" patch closest to the row of seat
-      ;;let target min-one-of patches with [ptype = "a" or ptype = "r"] [ distance [desired-row] of one-of turtles-here ]
-      let target min-one-of patches with [ptype = "a"] [distance ds]
-      let next min-one-of (patch-set patch-here neighbors4) with [count turtles-here = 0 and ptype = "a" and ptype != "s"] [distance target]
+      ;;let target min-one-of patches with [plabel = "a" or plabel = "r"] [ distance [desired-row] of one-of turtles-here ]
+      let target min-one-of patches with [plabel = "a"] [distance ds]
+      let next min-one-of (patch-set patch-here neighbors4) with [count turtles-here = 0 and plabel = "a" and plabel != "s"] [distance target]
       if next != nobody and next != patch-here [
         move-to next
       ]
@@ -158,7 +157,7 @@ end
 to update-happinesses
   ask turtles [
     ;; if they're in the airport, they get unhappy at a (slowest) rate
-    if [ptype] of patch-here = "af"  [
+    if [plabel] of patch-here = "af"  [
       set happiness happiness - 0.5
     ]
 
@@ -167,7 +166,7 @@ to update-happinesses
 
     ;; if they're in the correct seat, they gain happiness for a while then lose happiness quickly
     ;; justification: they're happy to be seated, but then get unhappy once they wait too long
-    if [ptype] of patch-here = "s" and [pcolor] of patch-here = taken-seat  [
+    if [plabel] of patch-here = "s" and [pcolor] of patch-here = taken-seat  [
       ifelse seated-count < 100
       [set happiness happiness + 0.75]
       [set happiness happiness - 1]
@@ -213,7 +212,7 @@ to make-people [num-people]
     ;; "claim" your seat so that nobody else can desire your seat
     move-to desired-seat
     let ds desired-seat
-    set my-row patches with [ptype = "s" and pxcor = [pxcor] of ds and section = [section] of ds]
+    set my-row patches with [plabel = "s" and pxcor = [pxcor] of ds and section = [section] of ds]
     set color one-of skin-colors
   ]
   ;; put the turtles back in the airport, in their own patch, now with a seat assignment
@@ -237,25 +236,25 @@ end
 to create-grass
   ask patches [
     set pcolor green
-    set ptype "g"
+    set plabel "g"
   ]
 end
 
 to create-airport
   ask patches with [pycor >= 0] [
     set pcolor 117
-    set ptype "af"
+    set plabel "af"
   ]
   ask patches with [pxcor = 14 and pycor < 15 and pycor > 1] [
-    set ptype "b"
+    set plabel "b"
   ]
   ask patches with [pycor = 0 or pycor = 16] [
     set pcolor black
-    set ptype "w"
+    set plabel "w"
   ]
   ask patches with [pycor > 0 and pycor < 16 and (pxcor = -16 or pxcor = 16)] [
     set pcolor black
-    set ptype "w"
+    set plabel "w"
   ]
 end
 
@@ -276,14 +275,14 @@ end
 
 to create-plane-2-2
   ;; setup plane border
-  ask patches with [(pycor = -16) or (pycor = -10) and (pxcor < 16)] [set pcolor white set ptype "w"]
-  ask patches with [(pxcor = 15 or pxcor = -16) and (pycor > -16) and (pycor < -10)] [set pcolor white set ptype "w"]
+  ask patches with [(pycor = -16) or (pycor = -10) and (pxcor < 16)] [set pcolor white set plabel "w"]
+  ask patches with [(pxcor = 15 or pxcor = -16) and (pycor > -16) and (pycor < -10)] [set pcolor white set plabel "w"]
 
   ;; setup plane background
-  ask patches with [(pxcor < 15) and (pxcor > -16) and (pycor > -16) and (pycor < -10)] [set pcolor 107 set ptype "pf" ]
+  ask patches with [(pxcor < 15) and (pxcor > -16) and (pycor > -16) and (pycor < -10)] [set pcolor 107 set plabel "pf" ]
 
   ;; set up "rows"
-  ask patches with [pxcor <= 12 and pcolor = 107] [set ptype "r"]
+  ask patches with [pxcor <= 12 and pcolor = 107] [set plabel "r"]
 
   ;; setup seats
   ask patches with [((pxcor = -15) or (pxcor = -13) or (pxcor = -11) or (pxcor = -9) or (pxcor = -7) or
@@ -291,32 +290,32 @@ to create-plane-2-2
     (pxcor = 7) or (pxcor = 9) or (pxcor = 11)) and ((pycor = -15) or (pycor = -14) or
     (pycor = -12) or (pycor = -11))] [
     (ifelse
-      pycor = -15 [set section 2 set seat-type "window" set correct-aisle -13 set ptype "s" set pcolor free-seat]
-      pycor = -14 [set section 2 set seat-type "aisle" set correct-aisle -13 set ptype "s" set pcolor free-seat]
-      pycor = -12 [set section 1 set seat-type "aisle" set correct-aisle -13 set ptype "s" set pcolor free-seat]
-      pycor = -11 [set section 1 set seat-type "window" set correct-aisle -13 set ptype "s" set pcolor free-seat])
+      pycor = -15 [set section 2 set seat-type "window" set correct-aisle -13 set plabel "s" set pcolor free-seat]
+      pycor = -14 [set section 2 set seat-type "aisle" set correct-aisle -13 set plabel "s" set pcolor free-seat]
+      pycor = -12 [set section 1 set seat-type "aisle" set correct-aisle -13 set plabel "s" set pcolor free-seat]
+      pycor = -11 [set section 1 set seat-type "window" set correct-aisle -13 set plabel "s" set pcolor free-seat])
   ]
 
   ;; create jetbridge to airport
-  ask patches with [((pxcor = 15) or (pxcor = 13)) and ((pycor <= 0) and (pycor > -10))] [ set pcolor black set ptype "w" ]
+  ask patches with [((pxcor = 15) or (pxcor = 13)) and ((pycor <= 0) and (pycor > -10))] [ set pcolor black set plabel "w" ]
   ask patches with [(pxcor = 14) and ((pycor <= 1) and (pycor > -10))] [
-    set pcolor 117 set ptype "b" ]
-  ask patch 14 -10 [ set pcolor 117 set ptype "b" ]
+    set pcolor 117 set plabel "b" ]
+  ask patch 14 -10 [ set pcolor 117 set plabel "b" ]
 
   ;; designate the aisle
-  ask patches with [pycor = -13 and pcolor = 107] [ set ptype "a" ]
+  ask patches with [pycor = -13 and pcolor = 107] [ set plabel "a" ]
 end
 
 to create-plane-2-3
   ;; setup plane border
-  ask patches with [(pycor = -16) or (pycor = -9) and (pxcor < 16)] [set pcolor white set ptype "w"]
-  ask patches with [(pxcor = 15 or pxcor = -16) and (pycor > -16) and (pycor < -9)] [set pcolor white set ptype "w"]
+  ask patches with [(pycor = -16) or (pycor = -9) and (pxcor < 16)] [set pcolor white set plabel "w"]
+  ask patches with [(pxcor = 15 or pxcor = -16) and (pycor > -16) and (pycor < -9)] [set pcolor white set plabel "w"]
 
   ;; setup plane background
-  ask patches with [(pxcor < 15) and (pxcor > -16) and (pycor > -16) and (pycor < -9)] [set pcolor 107 set ptype "pf"]
+  ask patches with [(pxcor < 15) and (pxcor > -16) and (pycor > -16) and (pycor < -9)] [set pcolor 107 set plabel "pf"]
 
   ;; set up "rows"
-  ask patches with [pxcor <= 12 and pcolor = 107] [set ptype "r"]
+  ask patches with [pxcor <= 12 and pcolor = 107] [set plabel "r"]
 
   ;; setup seats
   ask patches with [((pxcor = -15) or (pxcor = -13) or (pxcor = -11) or (pxcor = -9) or (pxcor = -7) or
@@ -324,32 +323,32 @@ to create-plane-2-3
     (pxcor = 7) or (pxcor = 9) or (pxcor = 11)) and ((pycor = -15) or (pycor = -14) or
     (pycor = -12) or (pycor = -11) or (pycor = -10))] [
     (ifelse
-      pycor = -15 [set section 2 set seat-type "window" set correct-aisle -13 set ptype "s" set pcolor free-seat]
-      pycor = -14 [set section 2 set seat-type "aisle" set correct-aisle -13 set ptype "s" set pcolor free-seat]
-      pycor = -12 [set section 1 set seat-type "aisle" set correct-aisle -13 set ptype "s" set pcolor free-seat]
-      pycor = -11 [set section 1 set seat-type "middle" set correct-aisle -13 set ptype "s" set pcolor free-seat]
-      pycor = -10 [set section 1 set seat-type "window" set correct-aisle -13 set ptype "s" set pcolor free-seat])
+      pycor = -15 [set section 2 set seat-type "window" set correct-aisle -13 set plabel "s" set pcolor free-seat]
+      pycor = -14 [set section 2 set seat-type "aisle" set correct-aisle -13 set plabel "s" set pcolor free-seat]
+      pycor = -12 [set section 1 set seat-type "aisle" set correct-aisle -13 set plabel "s" set pcolor free-seat]
+      pycor = -11 [set section 1 set seat-type "middle" set correct-aisle -13 set plabel "s" set pcolor free-seat]
+      pycor = -10 [set section 1 set seat-type "window" set correct-aisle -13 set plabel "s" set pcolor free-seat])
   ]
 
   ;; create jetbridge to airport
-  ask patches with [((pxcor = 15) or (pxcor = 13)) and ((pycor <= 0) and (pycor > -9))] [set pcolor black  set ptype "w"]
-  ask patches with [(pxcor = 14) and ((pycor <= 1) and (pycor > -9))] [set pcolor 117  set ptype "b"]
-  ask patch 14 -9 [set pcolor 117  set ptype "b"]
+  ask patches with [((pxcor = 15) or (pxcor = 13)) and ((pycor <= 0) and (pycor > -9))] [set pcolor black  set plabel "w"]
+  ask patches with [(pxcor = 14) and ((pycor <= 1) and (pycor > -9))] [set pcolor 117  set plabel "b"]
+  ask patch 14 -9 [set pcolor 117  set plabel "b"]
 
   ;; designate the aisle
-  ask patches with [pycor = -13 and pcolor = 107] [ set ptype "a" ]
+  ask patches with [pycor = -13 and pcolor = 107] [ set plabel "a" ]
 end
 
 to create-plane-3-3
   ;; setup plane border
-  ask patches with [(pycor = -16) or (pycor = -8) and (pxcor < 16)] [set pcolor white  set ptype "w"]
-  ask patches with [(pxcor = 15 or pxcor = -16) and (pycor > -16) and (pycor < -8)] [set pcolor white  set ptype "w"]
+  ask patches with [(pycor = -16) or (pycor = -8) and (pxcor < 16)] [set pcolor white  set plabel "w"]
+  ask patches with [(pxcor = 15 or pxcor = -16) and (pycor > -16) and (pycor < -8)] [set pcolor white  set plabel "w"]
 
   ;; setup plane background
-  ask patches with [(pxcor < 15) and (pxcor > -16) and (pycor > -16) and (pycor < -8)] [set pcolor 107  set ptype "pf"]
+  ask patches with [(pxcor < 15) and (pxcor > -16) and (pycor > -16) and (pycor < -8)] [set pcolor 107  set plabel "pf"]
 
   ;; set up "rows"
-  ask patches with [pxcor <= 12 and pcolor = 107] [set ptype "r"]
+  ask patches with [pxcor <= 12 and pcolor = 107] [set plabel "r"]
 
   ;; setup seats
   ask patches with [((pxcor = -15) or (pxcor = -13) or (pxcor = -11) or (pxcor = -9) or (pxcor = -7) or
@@ -357,33 +356,33 @@ to create-plane-3-3
     (pxcor = 7) or (pxcor = 9) or (pxcor = 11)) and ((pycor = -15) or (pycor = -14) or (pycor = -13) or
     (pycor = -11) or (pycor = -10) or (pycor = -9))] [
     (ifelse
-      pycor = -15 [set section 2 set seat-type "window" set correct-aisle -12 set ptype "s" set pcolor free-seat]
-      pycor = -14 [set section 2 set seat-type "middle" set correct-aisle -12 set ptype "s" set pcolor free-seat]
-      pycor = -13 [set section 2 set seat-type "aisle" set correct-aisle -12 set ptype "s" set pcolor free-seat]
-      pycor = -11 [set section 1 set seat-type "aisle" set correct-aisle -12 set ptype "s" set pcolor free-seat]
-      pycor = -10 [set section 1 set seat-type "middle" set correct-aisle -12 set ptype "s" set pcolor free-seat]
-      pycor = -9 [set section 1 set seat-type "window" set correct-aisle -12 set ptype "s" set pcolor free-seat])
+      pycor = -15 [set section 2 set seat-type "window" set correct-aisle -12 set plabel "s" set pcolor free-seat]
+      pycor = -14 [set section 2 set seat-type "middle" set correct-aisle -12 set plabel "s" set pcolor free-seat]
+      pycor = -13 [set section 2 set seat-type "aisle" set correct-aisle -12 set plabel "s" set pcolor free-seat]
+      pycor = -11 [set section 1 set seat-type "aisle" set correct-aisle -12 set plabel "s" set pcolor free-seat]
+      pycor = -10 [set section 1 set seat-type "middle" set correct-aisle -12 set plabel "s" set pcolor free-seat]
+      pycor = -9 [set section 1 set seat-type "window" set correct-aisle -12 set plabel "s" set pcolor free-seat])
   ]
 
   ;; create jetbridge to airport
-  ask patches with [((pxcor = 15) or (pxcor = 13)) and ((pycor <= 0) and (pycor > -8))] [set pcolor black  set ptype "w"]
-  ask patches with [(pxcor = 14) and ((pycor <= 1) and (pycor > -8))] [set pcolor 117  set ptype "b"]
-  ask patch 14 -8 [set pcolor 117  set ptype "b"]
+  ask patches with [((pxcor = 15) or (pxcor = 13)) and ((pycor <= 0) and (pycor > -8))] [set pcolor black  set plabel "w"]
+  ask patches with [(pxcor = 14) and ((pycor <= 1) and (pycor > -8))] [set pcolor 117  set plabel "b"]
+  ask patch 14 -8 [set pcolor 117  set plabel "b"]
 
   ;; designate the aisle
-  ask patches with [pycor = -12 and pcolor = 107] [ set ptype "a" ]
+  ask patches with [pycor = -12 and pcolor = 107] [ set plabel "a" ]
 end
 
 to create-plane-2-3-2
   ;; setup plane border
-  ask patches with [(pycor = -16) or (pycor = -6) and (pxcor < 16)] [set pcolor white  set ptype "w"]
-  ask patches with [(pxcor = 15 or pxcor = -16) and (pycor > -16) and (pycor < -6)] [set pcolor white  set ptype "w"]
+  ask patches with [(pycor = -16) or (pycor = -6) and (pxcor < 16)] [set pcolor white  set plabel "w"]
+  ask patches with [(pxcor = 15 or pxcor = -16) and (pycor > -16) and (pycor < -6)] [set pcolor white  set plabel "w"]
 
   ;; setup plane background
-  ask patches with [(pxcor < 15) and (pxcor > -16) and (pycor > -16) and (pycor < -6)] [set pcolor 107  set ptype "pf"]
+  ask patches with [(pxcor < 15) and (pxcor > -16) and (pycor > -16) and (pycor < -6)] [set pcolor 107  set plabel "pf"]
 
   ;; set up "rows"
-  ask patches with [pxcor <= 12 and pcolor = 107] [set ptype "r"]
+  ask patches with [pxcor <= 12 and pcolor = 107] [set plabel "r"]
 
   ;; setup seats
   ask patches with [((pxcor = -15) or (pxcor = -13) or (pxcor = -11) or (pxcor = -9) or (pxcor = -7) or
@@ -391,34 +390,34 @@ to create-plane-2-3-2
     (pxcor = 7) or (pxcor = 9) or (pxcor = 11)) and ((pycor = -15) or (pycor = -14) or
     (pycor = -12) or (pycor = -11) or (pycor = -10) or (pycor = -8) or (pycor = -7))] [
     (ifelse
-      pycor = -15 [set section 3 set seat-type "window" set correct-aisle -13 set ptype "s" set pcolor free-seat]
-      pycor = -14 [set section 3 set seat-type "aisle" set correct-aisle -13 set ptype "s" set pcolor free-seat]
-      pycor = -12 [set section 2 set seat-type "aisle" set correct-aisle -13 set ptype "s" set pcolor free-seat]
-      pycor = -11 [set section 2 set seat-type "middle" set correct-aisle one-of (list -13 -9) set ptype "s" set pcolor free-seat]
-      pycor = -10 [set section 2 set seat-type "aisle" set correct-aisle -9 set ptype "s" set pcolor free-seat]
-      pycor = -8 [set section 1 set seat-type "aisle" set correct-aisle -9 set ptype "s" set pcolor free-seat]
-      pycor = -7 [set section 1 set seat-type "window" set correct-aisle -9 set ptype "s" set pcolor free-seat])
+      pycor = -15 [set section 3 set seat-type "window" set correct-aisle -13 set plabel "s" set pcolor free-seat]
+      pycor = -14 [set section 3 set seat-type "aisle" set correct-aisle -13 set plabel "s" set pcolor free-seat]
+      pycor = -12 [set section 2 set seat-type "aisle" set correct-aisle -13 set plabel "s" set pcolor free-seat]
+      pycor = -11 [set section 2 set seat-type "middle" set correct-aisle one-of (list -13 -9) set plabel "s" set pcolor free-seat]
+      pycor = -10 [set section 2 set seat-type "aisle" set correct-aisle -9 set plabel "s" set pcolor free-seat]
+      pycor = -8 [set section 1 set seat-type "aisle" set correct-aisle -9 set plabel "s" set pcolor free-seat]
+      pycor = -7 [set section 1 set seat-type "window" set correct-aisle -9 set plabel "s" set pcolor free-seat])
   ]
 
   ;; create jetbridge to airport
-  ask patches with [((pxcor = 15) or (pxcor = 13)) and ((pycor <= 0) and (pycor > -6))] [set pcolor black  set ptype "w"]
-  ask patches with [(pxcor = 14) and ((pycor <= 1) and (pycor > -6))] [set pcolor 117  set ptype "b"]
-  ask patch 14 -6 [set pcolor 117 set ptype "b"]
+  ask patches with [((pxcor = 15) or (pxcor = 13)) and ((pycor <= 0) and (pycor > -6))] [set pcolor black  set plabel "w"]
+  ask patches with [(pxcor = 14) and ((pycor <= 1) and (pycor > -6))] [set pcolor 117  set plabel "b"]
+  ask patch 14 -6 [set pcolor 117 set plabel "b"]
 
   ;; designate the aisle
-  ask patches with [(pycor = -13 or pycor = -9) and pcolor = 107] [ set ptype "a" ]
+  ask patches with [(pycor = -13 or pycor = -9) and pcolor = 107] [ set plabel "a" ]
 end
 
 to create-plane-3-3-3
   ;; setup plane border
-  ask patches with [(pycor = -16) or (pycor = -4) and (pxcor < 16)] [set pcolor white  set ptype "w"]
-  ask patches with [(pxcor = 15 or pxcor = -16) and (pycor > -16) and (pycor < -4)] [set pcolor white  set ptype "w"]
+  ask patches with [(pycor = -16) or (pycor = -4) and (pxcor < 16)] [set pcolor white  set plabel "w"]
+  ask patches with [(pxcor = 15 or pxcor = -16) and (pycor > -16) and (pycor < -4)] [set pcolor white  set plabel "w"]
 
   ;; setup plane background
-  ask patches with [(pxcor < 15) and (pxcor > -16) and (pycor > -16) and (pycor < -4)] [set pcolor 107  set ptype "pf"]
+  ask patches with [(pxcor < 15) and (pxcor > -16) and (pycor > -16) and (pycor < -4)] [set pcolor 107  set plabel "pf"]
 
   ;; set up "rows"
-  ask patches with [pxcor <= 12 and pcolor = 107] [set ptype "r"]
+  ask patches with [pxcor <= 12 and pcolor = 107] [set plabel "r"]
 
   ;; setup seats
   ask patches with [((pxcor = -15) or (pxcor = -13) or (pxcor = -11) or (pxcor = -9) or (pxcor = -7) or
@@ -426,36 +425,36 @@ to create-plane-3-3-3
     (pxcor = 7) or (pxcor = 9) or (pxcor = 11)) and ((pycor = -15) or (pycor = -14) or (pycor = -13) or
     (pycor = -11) or (pycor = -10) or (pycor = -9) or (pycor = -7) or (pycor = -6) or (pycor = -5))] [
     (ifelse
-      pycor = -15 [set section 3 set seat-type "window" set correct-aisle -12 set ptype "s" set pcolor free-seat]
-       pycor = -14 [set section 3 set seat-type "middle" set correct-aisle -12 set ptype "s" set pcolor free-seat]
-      pycor = -13 [set section 3 set seat-type "aisle" set correct-aisle -12 set ptype "s" set pcolor free-seat]
-      pycor = -11 [set section 2 set seat-type "aisle" set correct-aisle -12 set ptype "s" set pcolor free-seat]
-      pycor = -10 [set section 2 set seat-type "middle" set correct-aisle one-of (list -12 -8) set ptype "s" set pcolor free-seat]
-      pycor = -9 [set section 2 set seat-type "aisle" set correct-aisle -8 set ptype "s" set pcolor free-seat]
-      pycor = -7 [set section 1 set seat-type "aisle" set correct-aisle -8 set ptype "s" set pcolor free-seat]
-      pycor = -6 [set section 1 set seat-type "middle" set correct-aisle -8 set ptype "s" set pcolor free-seat]
-      pycor = -5 [set section 1 set seat-type "window" set correct-aisle -8 set ptype "s" set pcolor free-seat])
+      pycor = -15 [set section 3 set seat-type "window" set correct-aisle -12 set plabel "s" set pcolor free-seat]
+       pycor = -14 [set section 3 set seat-type "middle" set correct-aisle -12 set plabel "s" set pcolor free-seat]
+      pycor = -13 [set section 3 set seat-type "aisle" set correct-aisle -12 set plabel "s" set pcolor free-seat]
+      pycor = -11 [set section 2 set seat-type "aisle" set correct-aisle -12 set plabel "s" set pcolor free-seat]
+      pycor = -10 [set section 2 set seat-type "middle" set correct-aisle one-of (list -12 -8) set plabel "s" set pcolor free-seat]
+      pycor = -9 [set section 2 set seat-type "aisle" set correct-aisle -8 set plabel "s" set pcolor free-seat]
+      pycor = -7 [set section 1 set seat-type "aisle" set correct-aisle -8 set plabel "s" set pcolor free-seat]
+      pycor = -6 [set section 1 set seat-type "middle" set correct-aisle -8 set plabel "s" set pcolor free-seat]
+      pycor = -5 [set section 1 set seat-type "window" set correct-aisle -8 set plabel "s" set pcolor free-seat])
   ]
 
   ;; create jetbridge to airport
-  ask patches with [((pxcor = 15) or (pxcor = 13)) and ((pycor <= 0) and (pycor > -4))] [set pcolor black set ptype "w"]
-  ask patches with [(pxcor = 14) and ((pycor <= 1) and (pycor > -4))] [set pcolor 117 set ptype "b"]
-  ask patch 14 -4 [set pcolor 117 set ptype "b"]
+  ask patches with [((pxcor = 15) or (pxcor = 13)) and ((pycor <= 0) and (pycor > -4))] [set pcolor black set plabel "w"]
+  ask patches with [(pxcor = 14) and ((pycor <= 1) and (pycor > -4))] [set pcolor 117 set plabel "b"]
+  ask patch 14 -4 [set pcolor 117 set plabel "b"]
 
   ;; designate the aisle
-  ask patches with [(pycor = -12 or pycor = -8) and pcolor = 107] [ set ptype "a" ]
+  ask patches with [(pycor = -12 or pycor = -8) and pcolor = 107] [ set plabel "a" ]
 end
 
 to create-plane-3-4-3
   ;; setup plane border
-  ask patches with [(pycor = -16) or (pycor = -3) and (pxcor < 16)] [set pcolor white set ptype "w"]
-  ask patches with [(pxcor = 15 or pxcor = -16) and (pycor > -16) and (pycor < -3)] [set pcolor white set ptype "w"]
+  ask patches with [(pycor = -16) or (pycor = -3) and (pxcor < 16)] [set pcolor white set plabel "w"]
+  ask patches with [(pxcor = 15 or pxcor = -16) and (pycor > -16) and (pycor < -3)] [set pcolor white set plabel "w"]
 
   ;; setup plane background
-  ask patches with [(pxcor < 15) and (pxcor > -16) and (pycor > -16) and (pycor < -3)] [set pcolor 107 set ptype "pf"]
+  ask patches with [(pxcor < 15) and (pxcor > -16) and (pycor > -16) and (pycor < -3)] [set pcolor 107 set plabel "pf"]
 
   ;; set up "rows"
-  ask patches with [pxcor <= 12 and pcolor = 107] [set ptype "r"]
+  ask patches with [pxcor <= 12 and pcolor = 107] [set plabel "r"]
 
   ;; setup seats
   ask patches with [((pxcor = -15) or (pxcor = -13) or (pxcor = -11) or (pxcor = -9) or (pxcor = -7) or
@@ -463,25 +462,25 @@ to create-plane-3-4-3
     (pxcor = 9) or (pxcor = 11)) and ((pycor = -15) or (pycor = -14) or (pycor = -13) or (pycor = -11) or
     (pycor = -10) or (pycor = -9) or (pycor = -8) or (pycor = -6) or (pycor = -5) or (pycor = -4))] [
     (ifelse
-      pycor = -15 [set section 3 set seat-type "window" set correct-aisle -12 set ptype "s" set pcolor free-seat]
-      pycor = -14 [set section 3 set seat-type "middle" set correct-aisle -12 set ptype "s" set pcolor free-seat]
-      pycor = -13 [set section 3 set seat-type "aisle" set correct-aisle -12 set ptype "s" set pcolor free-seat]
-      pycor = -11 [set section 2 set seat-type "aisle" set correct-aisle -12 set ptype "s" set pcolor free-seat]
-      pycor = -10 [set section 2 set seat-type "middle" set correct-aisle -12 set ptype "s" set pcolor free-seat]
-      pycor = -9 [set section 2 set seat-type "middle" set correct-aisle -7 set ptype "s" set pcolor free-seat]
-      pycor = -8 [set section 2 set seat-type "aisle" set correct-aisle -7 set ptype "s" set pcolor free-seat]
-      pycor = -6 [set section 1 set seat-type "aisle" set correct-aisle -7 set ptype "s" set pcolor free-seat]
-      pycor = -5 [set section 1 set seat-type "middle" set correct-aisle -7 set ptype "s" set pcolor free-seat]
-      pycor = -4 [set section 1 set seat-type "window" set correct-aisle -7 set ptype "s" set pcolor free-seat])
+      pycor = -15 [set section 3 set seat-type "window" set correct-aisle -12 set plabel "s" set pcolor free-seat]
+      pycor = -14 [set section 3 set seat-type "middle" set correct-aisle -12 set plabel "s" set pcolor free-seat]
+      pycor = -13 [set section 3 set seat-type "aisle" set correct-aisle -12 set plabel "s" set pcolor free-seat]
+      pycor = -11 [set section 2 set seat-type "aisle" set correct-aisle -12 set plabel "s" set pcolor free-seat]
+      pycor = -10 [set section 2 set seat-type "middle" set correct-aisle -12 set plabel "s" set pcolor free-seat]
+      pycor = -9 [set section 2 set seat-type "middle" set correct-aisle -7 set plabel "s" set pcolor free-seat]
+      pycor = -8 [set section 2 set seat-type "aisle" set correct-aisle -7 set plabel "s" set pcolor free-seat]
+      pycor = -6 [set section 1 set seat-type "aisle" set correct-aisle -7 set plabel "s" set pcolor free-seat]
+      pycor = -5 [set section 1 set seat-type "middle" set correct-aisle -7 set plabel "s" set pcolor free-seat]
+      pycor = -4 [set section 1 set seat-type "window" set correct-aisle -7 set plabel "s" set pcolor free-seat])
   ]
 
   ;; create jetbridge to airport
-  ask patches with [((pxcor = 15) or (pxcor = 13)) and ((pycor <= 0) and (pycor > -3))] [set pcolor black set ptype "w"]
-  ask patches with [(pxcor = 14) and ((pycor <= 1) and (pycor > -3))] [set pcolor 117 set ptype "b"]
-  ask patch 14 -3 [set pcolor 117 set ptype "b"]
+  ask patches with [((pxcor = 15) or (pxcor = 13)) and ((pycor <= 0) and (pycor > -3))] [set pcolor black set plabel "w"]
+  ask patches with [(pxcor = 14) and ((pycor <= 1) and (pycor > -3))] [set pcolor 117 set plabel "b"]
+  ask patch 14 -3 [set pcolor 117 set plabel "b"]
 
   ;; designate the aisle
-  ask patches with [(pycor = -12 or pycor = -7) and pcolor = 107] [ set ptype "a" ]
+  ask patches with [(pycor = -12 or pycor = -7) and pcolor = 107] [ set plabel "a" ]
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
@@ -536,7 +535,7 @@ CHOOSER
 plane-type
 plane-type
 "2-2" "2-3" "3-3" "2-3-2" "3-3-3" "3-4-3"
-3
+4
 
 BUTTON
 19
