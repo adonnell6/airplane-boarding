@@ -2,8 +2,14 @@
 ; Final Project
 ;
 
-;Todo list:
-; - boarding strategies!!!
+; Todo list (in order):
+; - more boarding strategies!!!
+; - tune happiness
+; - premier / priority boarding? (first priority)
+
+; Known bugs:
+; - passengers at rows all wait for the same time regardless of seat position
+; - passengers on two-aisle planes can end up going down the wrong aisle...
 
 globals [
   skin-colors
@@ -11,6 +17,7 @@ globals [
   free-seat
   taken-seat
   initial-happiness
+  boarding-wait-time
   boarding-counter
   current-boarding-group
 ]
@@ -46,11 +53,15 @@ to setup
 end
 
 to go
-  (ifelse
-    boarding-strategy = "random" [ ask turtles [ random-board-plane  ] ]
-    boarding-strategy = "WilMA" [ ask turtles [ wilma-board-plane ] ]
-    boarding-strategy = "back-to-front" [ ask turtles [ back-to-front-board-plane ] ])
-  ask turtles [move-to-seat]
+  ask patches with [count turtles-here > 1] [set pcolor red]
+  update-boarding-group
+  ask turtles with [boarding-group <= current-boarding-group] [board-plane]
+  ask turtles with [boarding-group <= current-boarding-group] [move-to-seat]
+;  (ifelse
+;    boarding-strategy = "random" [ ask turtles [ random-board-plane  ] ]
+;    boarding-strategy = "WilMA" [ ask turtles [ wilma-board-plane ] ]
+;    boarding-strategy = "back-to-front" [ ask turtles [ back-to-front-board-plane ] ])
+;  ask turtles [move-to-seat]
   update-happinesses
   recolor-seats
   ;; only keep running while there are people without seats
@@ -60,48 +71,42 @@ to go
   tick
 end
 
-to random-board-plane
-  ; if in the airport, move towards the bridge
-  ; this is where the boarding strategies are going to come into play....
-  if [plabel] of patch-here = "af" [
-    let here [patch-here] of self
-    let target min-one-of (patches with [plabel = "b"]) [distance here]
-    let next min-one-of (patch-set patch-here neighbors4) with [count turtles-here = 0 and pcolor = 117 and plabel != "s"] [distance target]
-    if next != nobody [
-      move-to next
-    ]
+to update-boarding-group
+  if current-boarding-group < 0 [
+    set current-boarding-group 1
+  ]
+  ; if there are less than five still waiting to board, move to the next group
+  if count turtles with [boarding-group <= current-boarding-group and
+    ([plabel] of ([patch-here] of self) = "af" or [plabel] of ([patch-here] of self) = "as" or [plabel] of ([patch-here] of self) = "b")] < 10 [
+    set current-boarding-group current-boarding-group + 1
   ]
 end
 
-to wilma-board-plane
-  ; if in the airport, move towards the bridge
-  ; this is where the boarding strategies are going to come into play....
-  if [plabel] of patch-here = "af" [
-    let here [patch-here] of self
-    let target min-one-of (patches with [plabel = "b"]) [distance here]
-    let next min-one-of (patch-set patch-here neighbors4) with [count turtles-here = 0 and pcolor = 117 and plabel != "s"] [distance target]
-    if next != nobody [
-      move-to next
+to board-plane
+  (ifelse
+    [plabel] of patch-here = "as" [
+      let here [patch-here] of self
+      let target min-one-of (patches with [plabel = "af"]) [distance here]
+      let next min-one-of (patch-set patch-here neighbors4) with [count turtles-here = 0 and plabel = "af"] [distance target]
+      if next != nobody [
+        move-to next
+      ]
     ]
-  ]
-end
-
-to back-to-front-board-plane
-  ; if in the airport, move towards the bridge
-  ; this is where the boarding strategies are going to come into play....
-  if [plabel] of patch-here = "af" [
-    let here [patch-here] of self
-    let target min-one-of (patches with [plabel = "b"]) [distance here]
-    let next min-one-of (patch-set patch-here neighbors4) with [count turtles-here = 0 and pcolor = 117 and plabel != "s"] [distance target]
-    if next != nobody [
-      move-to next
-    ]
-  ]
+    [plabel] of patch-here = "af" [
+      let here [patch-here] of self
+      let target min-one-of (patches with [plabel = "b"]) [distance here]
+      let next min-one-of (patch-set patch-here neighbors4) with [count turtles-here = 0 and plabel != "as" and plabel != "w"] [distance target]
+      if next != nobody [
+        move-to next
+      ]
+  ])
 end
 
 to move-to-seat
 ;  only if they're not in their desired seat
   if (patch-here != desired-seat and delay-time = 0) [
+    let ds desired-seat
+
     ; if you're in your desired-row spot, get into the seat
     if patch-here = desired-row [
       let target [desired-seat] of self
@@ -109,15 +114,8 @@ to move-to-seat
         move-to target
       ]
     ]
-    ; if in the bridge, move to the aisle
-    let ds desired-seat
-    if [plabel] of patch-here = "b" or [plabel] of patch-here = "pf" or ([plabel] of patch-here = "a" and [pycor] of patch-here != [correct-aisle] of ds)[
-      let target one-of patches with [pxcor = 14 and plabel = "a" and pycor = [correct-aisle] of ds]
-      let next min-one-of (patch-set patch-here neighbors4) with [count turtles-here = 0 and plabel = "a" or plabel = "pf" or plabel = "b"] [distance target]
-      if next != nobody [
-        move-to next
-      ]
-    ]
+
+
     ; if right before your row (equal with the seat in front of you)
     if [plabel] of patch-here = "a" and [pxcor] of patch-here = [pxcor] of desired-row + 1 [
       if bag? [
@@ -126,6 +124,18 @@ to move-to-seat
       let people-to-wait-for sum [count turtles-here] of my-row
       set delay-time delay-time + (people-to-wait-for * 5)
     ]
+
+
+    ; if in the bridge, move to the aisle
+    if [plabel] of patch-here = "b" or [plabel] of patch-here = "pf" or ([plabel] of patch-here = "a" and [pycor] of patch-here != [correct-aisle] of ds)[
+      let target one-of patches with [pxcor = 14 and plabel = "a" and pycor = [correct-aisle] of ds]
+      let next min-one-of (patch-set patch-here neighbors4) with [count turtles-here = 0 and (plabel = "a" or plabel = "pf" or plabel = "b")] [distance target]
+      if next != nobody [
+        move-to next
+      ]
+    ]
+
+
     ; if near your row, move towards your seat
     if [plabel] of patch-here != "af" and [pxcor] of patch-here = [pxcor] of desired-row [
       if delay-time = 0 [
@@ -136,6 +146,8 @@ to move-to-seat
         ]
       ]
     ]
+
+
     ; if in the aisle, move towards your row
     if [plabel] of patch-here = "a" [
       ;; want to move towards the "a" patch closest to the row of seat
@@ -151,7 +163,31 @@ to move-to-seat
 end
 
 to assign-boarding-groups
-
+  (ifelse
+    boarding-strategy = "random" [ ask turtles [set boarding-group 1]]
+    boarding-strategy = "WilMA" [ask turtles [
+      if [seat-type] of desired-seat = "window" [
+        set boarding-group 1
+      ]
+      if [seat-type] of desired-seat = "middle" [
+        set boarding-group 2
+      ]
+      if [seat-type] of desired-seat = "aisle" [
+        set boarding-group 3
+      ]
+    ]]
+    boarding-strategy = "back-to-front" [ask turtles [
+      let px [pxcor] of desired-seat
+      if px < -6 [
+        set boarding-group 1
+      ]
+      if -6 <= px and px < 4[
+        set boarding-group 2
+      ]
+      if 4 <= px[
+        set boarding-group 3
+      ]
+    ]])
 end
 
 to update-happinesses
@@ -217,19 +253,20 @@ to make-people [num-people]
   ]
   ;; put the turtles back in the airport, in their own patch, now with a seat assignment
   ask turtles [
-    move-to one-of patches with [count turtles-here = 0 and pycor > 0 and pxcor < 14 and pcolor = 117]
+    move-to one-of patches with [count turtles-here = 0 and plabel = "as"]
   ]
 end
 
 to color-patches
   create-grass
   create-airport
-  if plane-type = "2-2" [create-plane-2-2]
-  if plane-type = "2-3" [create-plane-2-3]
-  if plane-type = "3-3" [create-plane-3-3]
-  if plane-type = "2-3-2" [create-plane-2-3-2]
-  if plane-type = "3-3-3" [create-plane-3-3-3]
-  if plane-type = "3-4-3" [create-plane-3-4-3]
+  (ifelse
+    plane-type = "2-2" [ create-plane-2-2 ]
+    plane-type = "2-3" [ create-plane-2-3 ]
+    plane-type = "3-3" [ create-plane-3-3 ]
+    plane-type = "2-3-2" [ create-plane-2-3-2 ]
+    plane-type = "3-3-3" [ create-plane-3-3-3 ]
+    plane-type = "3-4-3" [ create-plane-3-4-3 ])
   set open-seats patches with [pcolor = free-seat]
 end
 
@@ -242,31 +279,34 @@ end
 
 to create-airport
   ask patches with [pycor >= 0] [
-    set pcolor 117
+    set pcolor 8
     set plabel "af"
   ]
   ask patches with [pxcor = 14 and pycor < 15 and pycor > 1] [
     set plabel "b"
   ]
-  ask patches with [pycor = 0 or pycor = 16] [
+  ask patches with [(pycor = 0 or pycor = 16) or (pycor > 0 and pycor < 16 and (pxcor = -16 or pxcor = 16))] [
     set pcolor black
     set plabel "w"
   ]
-  ask patches with [pycor > 0 and pycor < 16 and (pxcor = -16 or pxcor = 16)] [
-    set pcolor black
-    set plabel "w"
+
+  ask patches with [((pycor = 4 or pycor = 5 or pycor = 8 or pycor = 9 or pycor = 12 or pycor = 13) and (-13 < pxcor and pxcor < 8))
+    or (((pxcor = -15) and (16 > pycor and pycor > 1)) or ((pycor = 1) and (-15 < pxcor and pxcor < 8)))] [
+    set pcolor 102
+    set plabel "as"
   ]
+  ask patch -15 1 [ set pcolor 102 set plabel "w" ]
 end
 
 to setup-globals
   set boarding-counter 0
   (ifelse
-    plane-type = "2-2" [ set initial-happiness 112]
-    plane-type = "2-3" [ set initial-happiness 140]
-    plane-type = "3-3" [ set initial-happiness 168]
-    plane-type = "2-3-2" [ set initial-happiness 196]
-    plane-type = "3-3-3" [ set initial-happiness 252]
-    plane-type = "3-4-3" [ set initial-happiness 280])
+    plane-type = "2-2" [ set initial-happiness 112 set boarding-wait-time 10]
+    plane-type = "2-3" [ set initial-happiness 140 set boarding-wait-time 9]
+    plane-type = "3-3" [ set initial-happiness 168 set boarding-wait-time 8]
+    plane-type = "2-3-2" [ set initial-happiness 196 set boarding-wait-time 6]
+    plane-type = "3-3-3" [ set initial-happiness 252 set boarding-wait-time 4]
+    plane-type = "3-4-3" [ set initial-happiness 280 set boarding-wait-time 3])
   set taken-seat 57
   set free-seat 17
   set skin-colors [[138 84 59] [141 85 36] [198 134 66] [224 172 105] [241 194 125] [255 219 172]]
@@ -298,9 +338,8 @@ to create-plane-2-2
 
   ;; create jetbridge to airport
   ask patches with [((pxcor = 15) or (pxcor = 13)) and ((pycor <= 0) and (pycor > -10))] [ set pcolor black set plabel "w" ]
-  ask patches with [(pxcor = 14) and ((pycor <= 1) and (pycor > -10))] [
-    set pcolor 117 set plabel "b" ]
-  ask patch 14 -10 [ set pcolor 117 set plabel "b" ]
+  ask patches with [(pxcor = 14) and ((pycor <= 1) and (pycor > -10))] [ set pcolor 8 set plabel "b" ]
+  ask patch 14 -10 [ set pcolor 8 set plabel "b" ]
 
   ;; designate the aisle
   ask patches with [pycor = -13 and pcolor = 107] [ set plabel "a" ]
@@ -332,8 +371,8 @@ to create-plane-2-3
 
   ;; create jetbridge to airport
   ask patches with [((pxcor = 15) or (pxcor = 13)) and ((pycor <= 0) and (pycor > -9))] [set pcolor black  set plabel "w"]
-  ask patches with [(pxcor = 14) and ((pycor <= 1) and (pycor > -9))] [set pcolor 117  set plabel "b"]
-  ask patch 14 -9 [set pcolor 117  set plabel "b"]
+  ask patches with [(pxcor = 14) and ((pycor <= 1) and (pycor > -9))] [set pcolor 8  set plabel "b"]
+  ask patch 14 -9 [set pcolor 8  set plabel "b"]
 
   ;; designate the aisle
   ask patches with [pycor = -13 and pcolor = 107] [ set plabel "a" ]
@@ -366,8 +405,8 @@ to create-plane-3-3
 
   ;; create jetbridge to airport
   ask patches with [((pxcor = 15) or (pxcor = 13)) and ((pycor <= 0) and (pycor > -8))] [set pcolor black  set plabel "w"]
-  ask patches with [(pxcor = 14) and ((pycor <= 1) and (pycor > -8))] [set pcolor 117  set plabel "b"]
-  ask patch 14 -8 [set pcolor 117  set plabel "b"]
+  ask patches with [(pxcor = 14) and ((pycor <= 1) and (pycor > -8))] [set pcolor 8  set plabel "b"]
+  ask patch 14 -8 [set pcolor 8  set plabel "b"]
 
   ;; designate the aisle
   ask patches with [pycor = -12 and pcolor = 107] [ set plabel "a" ]
@@ -401,8 +440,8 @@ to create-plane-2-3-2
 
   ;; create jetbridge to airport
   ask patches with [((pxcor = 15) or (pxcor = 13)) and ((pycor <= 0) and (pycor > -6))] [set pcolor black  set plabel "w"]
-  ask patches with [(pxcor = 14) and ((pycor <= 1) and (pycor > -6))] [set pcolor 117  set plabel "b"]
-  ask patch 14 -6 [set pcolor 117 set plabel "b"]
+  ask patches with [(pxcor = 14) and ((pycor <= 1) and (pycor > -6))] [set pcolor 8  set plabel "b"]
+  ask patch 14 -6 [set pcolor 8 set plabel "b"]
 
   ;; designate the aisle
   ask patches with [(pycor = -13 or pycor = -9) and pcolor = 107] [ set plabel "a" ]
@@ -438,8 +477,8 @@ to create-plane-3-3-3
 
   ;; create jetbridge to airport
   ask patches with [((pxcor = 15) or (pxcor = 13)) and ((pycor <= 0) and (pycor > -4))] [set pcolor black set plabel "w"]
-  ask patches with [(pxcor = 14) and ((pycor <= 1) and (pycor > -4))] [set pcolor 117 set plabel "b"]
-  ask patch 14 -4 [set pcolor 117 set plabel "b"]
+  ask patches with [(pxcor = 14) and ((pycor <= 1) and (pycor > -4))] [set pcolor 8 set plabel "b"]
+  ask patch 14 -4 [set pcolor 8 set plabel "b"]
 
   ;; designate the aisle
   ask patches with [(pycor = -12 or pycor = -8) and pcolor = 107] [ set plabel "a" ]
@@ -476,21 +515,21 @@ to create-plane-3-4-3
 
   ;; create jetbridge to airport
   ask patches with [((pxcor = 15) or (pxcor = 13)) and ((pycor <= 0) and (pycor > -3))] [set pcolor black set plabel "w"]
-  ask patches with [(pxcor = 14) and ((pycor <= 1) and (pycor > -3))] [set pcolor 117 set plabel "b"]
-  ask patch 14 -3 [set pcolor 117 set plabel "b"]
+  ask patches with [(pxcor = 14) and ((pycor <= 1) and (pycor > -3))] [set pcolor 8 set plabel "b"]
+  ask patch 14 -3 [set pcolor 8 set plabel "b"]
 
   ;; designate the aisle
   ask patches with [(pycor = -12 or pycor = -7) and pcolor = 107] [ set plabel "a" ]
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
-210
+199
 10
-581
-382
+745
+557
 -1
 -1
-11.0
+16.30303030303031
 1
 10
 1
@@ -535,7 +574,7 @@ CHOOSER
 plane-type
 plane-type
 "2-2" "2-3" "3-3" "2-3-2" "3-3-3" "3-4-3"
-4
+5
 
 BUTTON
 19
@@ -555,10 +594,10 @@ NIL
 0
 
 PLOT
-6
-397
-790
-547
+30
+588
+814
+738
 % of original happiness
 NIL
 NIL
@@ -598,10 +637,10 @@ boarding-strategy
 2
 
 PLOT
-230
-511
-430
-661
+254
+702
+454
+852
 bridge % full
 NIL
 NIL
@@ -614,6 +653,45 @@ false
 "" ""
 PENS
 "default" 1.0 0 -16777216 true "" "plot sum [count turtles-here] of (patches with [pxcor = 14 and -3 < pycor and pycor < 10]) * 100 / count patches with [pxcor = 14 and -3 < pycor and pycor < 10]"
+
+MONITOR
+11
+297
+178
+342
+NIL
+current-boarding-group
+17
+1
+11
+
+BUTTON
+929
+167
+1014
+200
+go-once
+go
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+0
+
+MONITOR
+872
+415
+994
+460
+oops
+count turtles with [patch-here = patch 14 -12]
+17
+1
+11
 
 @#$#@#$#@
 ## WHAT IS IT?
