@@ -7,7 +7,6 @@
 ; - premier / priority boarding? (first priority)
 
 ; Known bugs:
-; - passengers at rows all wait for the same time regardless of seat position
 
 globals [
   skin-colors
@@ -40,7 +39,7 @@ patches-own [
 
 to setup
   clear-all
-;  random-seed 48722
+  ;  random-seed 48722
 
   setup-globals
 
@@ -57,11 +56,11 @@ to go
   update-boarding-group
   ask turtles with [boarding-group <= current-boarding-group] [board-plane]
   ask turtles with [boarding-group <= current-boarding-group] [move-to-seat]
-;  (ifelse
-;    boarding-strategy = "random" [ ask turtles [ random-board-plane  ] ]
-;    boarding-strategy = "WilMA" [ ask turtles [ wilma-board-plane ] ]
-;    boarding-strategy = "back-to-front" [ ask turtles [ back-to-front-board-plane ] ])
-;  ask turtles [move-to-seat]
+  ;  (ifelse
+  ;    boarding-strategy = "random" [ ask turtles [ random-board-plane  ] ]
+  ;    boarding-strategy = "WilMA" [ ask turtles [ wilma-board-plane ] ]
+  ;    boarding-strategy = "back-to-front" [ ask turtles [ back-to-front-board-plane ] ])
+  ;  ask turtles [move-to-seat]
   update-happinesses
   recolor-seats
   ;; only keep running while there are people without seats
@@ -103,7 +102,7 @@ to board-plane
 end
 
 to move-to-seat
-;  only if they're not in their desired seat
+  ;  only if they're not in their desired seat
   if (patch-here != desired-seat and delay-time = 0) [
     let ds desired-seat
 
@@ -115,16 +114,17 @@ to move-to-seat
       ]
     ]
 
-
     ; if right before your row (equal with the seat in front of you)
     if [ptype] of patch-here = "a" and [pxcor] of patch-here = [pxcor] of desired-row + 1 [
       if bag? [
-       set delay-time delay-time + 3 + random 4
+        set delay-time delay-time + 3 + random 4
       ]
-      let people-to-wait-for sum [count turtles-here] of my-row
+      let people-to-wait-for 0 ; default to zero for the window seat
+      (ifelse
+        [seat-type] of desired-seat = "middle" [set people-to-wait-for people-to-wait-for + sum [count turtles-here] of (my-row with [seat-type = "aisle"])]
+        [seat-type] of desired-seat = "window" [set people-to-wait-for people-to-wait-for + sum [count turtles-here] of my-row with [seat-type = "aisle" or seat-type = "middle"]])
       set delay-time delay-time + (people-to-wait-for * 5)
     ]
-
 
     ; if in the bridge, move to the aisle
     if [ptype] of patch-here = "b" or [ptype] of patch-here = "pf" or ([ptype] of patch-here = "a" and [pxcor] of patch-here >= 13 and [pycor] of patch-here != [correct-aisle] of ds)[
@@ -134,7 +134,6 @@ to move-to-seat
         move-to next
       ]
     ]
-
 
     ; if near your row, move towards your seat
     if [ptype] of patch-here != "af" and [pxcor] of patch-here = [pxcor] of desired-row [
@@ -146,7 +145,6 @@ to move-to-seat
         ]
       ]
     ]
-
 
     ; if in the aisle, move towards your row
     if [ptype] of patch-here = "a" [
@@ -187,7 +185,7 @@ to assign-boarding-groups
       if 4 <= px[
         set boarding-group 3
       ]
-    ]])
+  ]])
 end
 
 to update-happinesses
@@ -225,24 +223,21 @@ end
 to create-passengers
   ; randomly create not-full airplanes (which is realistic)
   ; max: full, min: 80% full
-  if plane-type = "2-2" [make-people 56 * (1 - random-float 0.2)]
-  if plane-type = "2-3" [make-people 70 * (1 - random-float 0.2)]
-  if plane-type = "3-3" [make-people 84 * (1 - random-float 0.2)]
-  if plane-type = "2-3-2" [make-people 98 * (1 - random-float 0.2)]
-  if plane-type = "3-3-3" [make-people 126 * (1 - random-float 0.2)]
-  if plane-type = "3-4-3" [make-people 140 * (1 - random-float 0.2)]
+  if plane-type = "2-2" [make-people 56 * percent-full]
+  if plane-type = "2-3" [make-people 70 * percent-full]
+  if plane-type = "3-3" [make-people 84 * percent-full]
+  if plane-type = "2-3-2" [make-people 98 * percent-full]
+  if plane-type = "3-3-3" [make-people 126 * percent-full]
+  if plane-type = "3-4-3" [make-people 140 * percent-full]
 end
 
 to make-people [num-people]
   create-turtles num-people [
-    set bag? random 100 < probability-carry-on
+    set bag? random-float 1 < probability-carry-on
     set delay-time 0
     set shape "person"
-    ;; let's just start this here for now...
     set happiness initial-happiness
-    ;; literally the amount of time they've been in their seat
     set seated-count 0
-    ;; get an assigned seat that is an open seat
     set desired-seat one-of open-seats with [count turtles-here = 0]
     set desired-row patch ([pxcor] of desired-seat + 1) ([pycor] of desired-seat)
     ;; "claim" your seat so that nobody else can desire your seat
@@ -468,7 +463,7 @@ to create-plane-3-3-3
     (pycor = -11) or (pycor = -10) or (pycor = -9) or (pycor = -7) or (pycor = -6) or (pycor = -5))] [
     (ifelse
       pycor = -15 [set section 3 set seat-type "window" set correct-aisle -12 set ptype "s" set pcolor free-seat]
-       pycor = -14 [set section 3 set seat-type "middle" set correct-aisle -12 set ptype "s" set pcolor free-seat]
+      pycor = -14 [set section 3 set seat-type "middle" set correct-aisle -12 set ptype "s" set pcolor free-seat]
       pycor = -13 [set section 3 set seat-type "aisle" set correct-aisle -12 set ptype "s" set pcolor free-seat]
       pycor = -11 [set section 2 set seat-type "aisle" set correct-aisle -12 set ptype "s" set pcolor free-seat]
       pycor = -10 [set section 2 set seat-type "middle" set correct-aisle one-of (list -12 -8) set ptype "s" set pcolor free-seat]
@@ -577,13 +572,13 @@ NIL
 
 CHOOSER
 19
-172
+213
 168
-217
+258
 plane-type
 plane-type
 "2-2" "2-3" "3-3" "2-3-2" "3-3-3" "3-4-3"
-3
+5
 
 BUTTON
 19
@@ -628,68 +623,48 @@ SLIDER
 probability-carry-on
 probability-carry-on
 0
-100
-0.0
 1
+1.0
+0.01
 1
 NIL
 HORIZONTAL
 
 CHOOSER
 19
-221
+262
 168
-266
+307
 boarding-strategy
 boarding-strategy
 "random" "WilMA" "back-to-front"
 1
 
-PLOT
-254
-702
-454
-852
-bridge % full
+SLIDER
+19
+174
+169
+207
+percent-full
+percent-full
+0
+1
+1.0
+0.01
+1
 NIL
-NIL
-0.0
-10.0
-0.0
-10.0
-true
-false
-"" ""
-PENS
-"default" 1.0 0 -16777216 true "" "plot sum [count turtles-here] of (patches with [pxcor = 14 and -3 < pycor and pycor < 10]) * 100 / count patches with [pxcor = 14 and -3 < pycor and pycor < 10]"
+HORIZONTAL
 
 MONITOR
-11
-297
-178
-342
+34
+454
+127
+499
 NIL
-current-boarding-group
+count turtles
 17
 1
 11
-
-BUTTON
-16
-363
-101
-396
-go-once
-go
-NIL
-1
-T
-OBSERVER
-NIL
-NIL
-NIL
-NIL
-0
 
 @#$#@#$#@
 ## WHAT IS IT?
