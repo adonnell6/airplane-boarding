@@ -4,7 +4,7 @@
 ; Todo list (in order):
 ; - more boarding strategies!!!
 ; - tune happiness
-; - premier / priority boarding? (first priority)
+; - simplify the process by only putting in two airplanes
 
 ; Known bugs:
 
@@ -23,11 +23,12 @@ turtles-own [
   desired-seat
   desired-row
   happiness
-  seated-count
   bag?
+  seated-count
   delay-time
   my-row
   boarding-group
+  time-out-of-seat
 ]
 
 patches-own [
@@ -39,15 +40,10 @@ patches-own [
 
 to setup
   clear-all
-  ;  random-seed 48722
-
   setup-globals
-
   color-patches
-
   create-passengers
   assign-boarding-groups
-
   reset-ticks
 end
 
@@ -56,11 +52,9 @@ to go
   update-boarding-group
   ask turtles with [boarding-group <= current-boarding-group] [board-plane]
   ask turtles with [boarding-group <= current-boarding-group] [move-to-seat]
-  ;  (ifelse
-  ;    boarding-strategy = "random" [ ask turtles [ random-board-plane  ] ]
-  ;    boarding-strategy = "WilMA" [ ask turtles [ wilma-board-plane ] ]
-  ;    boarding-strategy = "back-to-front" [ ask turtles [ back-to-front-board-plane ] ])
-  ;  ask turtles [move-to-seat]
+  ask turtles [
+   update-time-out-of-seat
+  ]
   update-happinesses
   recolor-seats
   ;; only keep running while there are people without seats
@@ -68,6 +62,12 @@ to go
     stop
   ]
   tick
+end
+
+to update-time-out-of-seat
+  if [ptype] of patch-here != "s" and [ptype] of patch-here != "as" [
+    set time-out-of-seat time-out-of-seat + 1
+  ]
 end
 
 to update-boarding-group
@@ -162,30 +162,180 @@ end
 
 to assign-boarding-groups
   (ifelse
-    boarding-strategy = "random" [ ask turtles [set boarding-group 1]]
-    boarding-strategy = "WilMA" [ask turtles [
-      if [seat-type] of desired-seat = "window" [
-        set boarding-group 1
-      ]
-      if [seat-type] of desired-seat = "middle" [
-        set boarding-group 2
-      ]
-      if [seat-type] of desired-seat = "aisle" [
-        set boarding-group 3
-      ]
-    ]]
-    boarding-strategy = "back-to-front" [ask turtles [
-      let px [pxcor] of desired-seat
-      if px < -6 [
-        set boarding-group 1
-      ]
-      if -6 <= px and px < 4[
-        set boarding-group 2
-      ]
-      if 4 <= px[
-        set boarding-group 3
-      ]
-  ]])
+    boarding-strategy = "random" [assign-random]
+    boarding-strategy = "WilMA" [assign-WilMA]
+    boarding-strategy = "window-to-aisle-half-block" [assign-window-to-aisle-half-block]
+    boarding-strategy = "window-to-aisle-alternate" [assign-window-to-aisle-alternate]
+    boarding-strategy = "reverse-pyramid" [assign-reverse-pyramid]
+    boarding-strategy = "reverse-pyramid-half-zone" [assign-reverse-pyramid-half-zone]
+    boarding-strategy = "back-to-front-5-zones" [assign-back-to-front-5-zones]
+    boarding-strategy = "back-to-front-mix" [assign-back-to-front-mix]
+    boarding-strategy = "front-to-back" [assign-front-to-back]
+    boarding-strategy = "half-block-back-to-front" [assign-half-block-back-to-front]
+    boarding-strategy = "half-block-mix-1" [assign-half-block-mix-1]
+    boarding-strategy = "half-block-mix-2" [assign-half-block-mix-2]
+    boarding-strategy = "by-row-front-to-back" [assign-by-row-front-to-back]
+    boarding-strategy = "by-row-back-to-front" [assign-by-row-back-to-front]
+    boarding-strategy = "by-half-row-front-to-back" [assign-by-half-row-front-to-back]
+    boarding-strategy = "by-half-row-back-to-front" [assign-by-half-row-back-to-front]
+    boarding-strategy = "rotating-zone-5-zones" [assign-rotating-zone-5-zones]
+    boarding-strategy = "modified-optimal" [assign-modified-optimal]
+    boarding-strategy = "non-traditional-method" [assign-non-traditional-method]
+    boarding-strategy = "back-to-front-by-seating-order" [assign-back-to-front-by-seating-order]
+    boarding-strategy = "seat-descending-order" [assign-seat-descending-order]
+    boarding-strategy = "Steffen-method" [assign-Steffen-method]
+    boarding-strategy = "Steffen-variation" [assign-Steffen-variation])
+end
+
+to assign-random
+  ask turtles [set boarding-group 1]
+end
+
+to assign-WilMA
+  ask turtles [
+    (ifelse
+      [seat-type] of desired-seat = "window" [set boarding-group 1]
+      [seat-type] of desired-seat = "middle" [set boarding-group 2]
+      [seat-type] of desired-seat = "aisle" [set boarding-group 3])]
+end
+
+to assign-window-to-aisle-half-block
+  ask turtles [set color red]
+end
+
+to assign-window-to-aisle-alternate
+  ask turtles [set color red]
+end
+
+to assign-reverse-pyramid
+  ask turtles [set color red]
+end
+
+to assign-reverse-pyramid-half-zone
+  ask turtles [set color red]
+end
+
+to assign-back-to-front-5-zones
+  ask turtles [
+    (ifelse
+      -16 < [pxcor] of desired-seat and [pxcor] of desired-seat <= -11 [set boarding-group 1]
+      -11 < [pxcor] of desired-seat and [pxcor] of desired-seat <= -5 [set boarding-group 2]
+      -5 < [pxcor] of desired-seat and [pxcor] of desired-seat <= 1 [set boarding-group 3]
+      1 < [pxcor] of desired-seat and [pxcor] of desired-seat <= 7 [set boarding-group 4]
+      7 < [pxcor] of desired-seat and [pxcor] of desired-seat <= 16 [set boarding-group 5])]
+end
+
+to assign-back-to-front-mix
+  ask turtles [
+    (ifelse
+      -16 < [pxcor] of desired-seat and [pxcor] of desired-seat <= -11 [set boarding-group 1]
+      -11 < [pxcor] of desired-seat and [pxcor] of desired-seat <= -5 [set boarding-group 4]
+      -5 < [pxcor] of desired-seat and [pxcor] of desired-seat <= 1 [set boarding-group 2]
+      1 < [pxcor] of desired-seat and [pxcor] of desired-seat <= 7 [set boarding-group 5]
+      7 < [pxcor] of desired-seat and [pxcor] of desired-seat <= 16 [set boarding-group 3])]
+end
+
+to assign-front-to-back
+  ask turtles [set color red]
+end
+
+to assign-half-block-back-to-front
+  ask turtles [set color red]
+end
+
+to assign-half-block-mix-1
+  ask turtles [set color red]
+end
+
+to assign-half-block-mix-2
+  ask turtles [set color red]
+end
+
+to assign-by-row-front-to-back
+  set boarding-wait-time (count turtles / 14) - 1
+  ask turtles [
+    (ifelse
+      [pxcor] of desired-seat = 11 [set boarding-group 1]
+      [pxcor] of desired-seat = 9 [set boarding-group 2]
+      [pxcor] of desired-seat = 7 [set boarding-group 3]
+      [pxcor] of desired-seat = 5 [set boarding-group 4]
+      [pxcor] of desired-seat = 3 [set boarding-group 5]
+      [pxcor] of desired-seat = 1 [set boarding-group 6]
+      [pxcor] of desired-seat = -1 [set boarding-group 7]
+      [pxcor] of desired-seat = -3 [set boarding-group 8]
+      [pxcor] of desired-seat = -5 [set boarding-group 9]
+      [pxcor] of desired-seat = -7 [set boarding-group 10]
+      [pxcor] of desired-seat = -9 [set boarding-group 11]
+      [pxcor] of desired-seat = -11 [set boarding-group 12]
+      [pxcor] of desired-seat = -13 [set boarding-group 13]
+      [pxcor] of desired-seat = -15 [set boarding-group 14])]
+end
+
+to assign-by-row-back-to-front
+  set boarding-wait-time (count turtles / 14) - 1
+  ask turtles [
+    (ifelse
+      [pxcor] of desired-seat = 11 [set boarding-group 14]
+      [pxcor] of desired-seat = 9 [set boarding-group 13]
+      [pxcor] of desired-seat = 7 [set boarding-group 12]
+      [pxcor] of desired-seat = 5 [set boarding-group 11]
+      [pxcor] of desired-seat = 3 [set boarding-group 10]
+      [pxcor] of desired-seat = 1 [set boarding-group 9]
+      [pxcor] of desired-seat = -1 [set boarding-group 8]
+      [pxcor] of desired-seat = -3 [set boarding-group 7]
+      [pxcor] of desired-seat = -5 [set boarding-group 6]
+      [pxcor] of desired-seat = -7 [set boarding-group 5]
+      [pxcor] of desired-seat = -9 [set boarding-group 4]
+      [pxcor] of desired-seat = -11 [set boarding-group 3]
+      [pxcor] of desired-seat = -13 [set boarding-group 2]
+      [pxcor] of desired-seat = -15 [set boarding-group 1])]
+end
+
+to assign-by-half-row-front-to-back
+  ask turtles [set color red]
+end
+
+to assign-by-half-row-back-to-front
+  ask turtles [set color red]
+end
+
+to assign-rotating-zone-5-zones
+  ask turtles [
+    (ifelse
+      -16 < [pxcor] of desired-seat and [pxcor] of desired-seat <= -11 [set boarding-group 2]
+      -11 < [pxcor] of desired-seat and [pxcor] of desired-seat <= -5 [set boarding-group 4]
+      -5 < [pxcor] of desired-seat and [pxcor] of desired-seat <= 1 [set boarding-group 5]
+      1 < [pxcor] of desired-seat and [pxcor] of desired-seat <= 7 [set boarding-group 3]
+      7 < [pxcor] of desired-seat and [pxcor] of desired-seat <= 16 [set boarding-group 1])]
+end
+
+to assign-modified-optimal
+  ask turtles [set color red]
+end
+
+to assign-non-traditional-method
+  ask turtles [
+    (ifelse
+      -16 < [pxcor] of desired-seat and [pxcor] of desired-seat <= -9 [set boarding-group 4]
+      -9 < [pxcor] of desired-seat and [pxcor] of desired-seat <= -5 [set boarding-group 1]
+      -5 < [pxcor] of desired-seat and [pxcor] of desired-seat <= 3 [set boarding-group 2]
+      3 < [pxcor] of desired-seat and [pxcor] of desired-seat <= 16 [set boarding-group 3])]
+end
+
+to assign-back-to-front-by-seating-order
+  ask turtles [set color red]
+end
+
+to assign-seat-descending-order
+  ask turtles [set color red]
+end
+
+to assign-Steffen-method
+  ask turtles [set color red]
+end
+
+to assign-Steffen-variation
+  ask turtles [set color red]
 end
 
 to update-happinesses
@@ -233,6 +383,7 @@ end
 
 to make-people [num-people]
   create-turtles num-people [
+    set time-out-of-seat 0
     set bag? random-float 1 < probability-carry-on
     set delay-time 0
     set shape "person"
@@ -338,6 +489,9 @@ to create-plane-2-2
 
   ;; designate the aisle
   ask patches with [pycor = -13 and pcolor = 107] [ set ptype "a" ]
+
+  ;; bug fix?
+  ask patches with [pxcor = 13 and (pycor = -11 or pycor = -12)] [set ptype "w"]
 end
 
 to create-plane-2-3
@@ -371,6 +525,9 @@ to create-plane-2-3
 
   ;; designate the aisle
   ask patches with [pycor = -13 and pcolor = 107] [ set ptype "a" ]
+
+  ;; bug fix?
+  ask patches with [pxcor = 13 and (pycor = -10 or pycor = -11 or  pycor = -12)] [set ptype "w"]
 end
 
 to create-plane-3-3
@@ -405,6 +562,9 @@ to create-plane-3-3
 
   ;; designate the aisle
   ask patches with [pycor = -12 and pcolor = 107] [ set ptype "a" ]
+
+  ;; bug fix?
+  ask patches with [pxcor = 13 and (pycor = -9 or pycor = -10 or  pycor = -11)] [set ptype "w"]
 end
 
 to create-plane-2-3-2
@@ -527,10 +687,10 @@ to create-plane-3-4-3
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
-199
-10
-745
-557
+305
+20
+851
+567
 -1
 -1
 16.30303030303031
@@ -554,10 +714,10 @@ ticks
 30.0
 
 BUTTON
-19
-61
-166
-94
+20
+65
+143
+98
 NIL
 setup\n
 NIL
@@ -571,20 +731,20 @@ NIL
 1
 
 CHOOSER
-19
-213
-168
-258
+20
+185
+270
+230
 plane-type
 plane-type
 "2-2" "2-3" "3-3" "2-3-2" "3-3-3" "3-4-3"
 5
 
 BUTTON
-19
+145
+65
+268
 98
-167
-131
 go
 go
 T
@@ -598,10 +758,10 @@ NIL
 0
 
 PLOT
-30
-588
-814
-738
+19
+289
+269
+439
 % of original happiness
 NIL
 NIL
@@ -616,10 +776,10 @@ PENS
 "default" 1.0 0 -16777216 true "" "plot mean [happiness] of turtles * 100 / initial-happiness"
 
 SLIDER
-19
-134
-168
-167
+20
+105
+270
+138
 probability-carry-on
 probability-carry-on
 0
@@ -631,20 +791,20 @@ NIL
 HORIZONTAL
 
 CHOOSER
-19
-262
-168
-307
+20
+235
+270
+280
 boarding-strategy
 boarding-strategy
-"random" "WilMA" "back-to-front"
-1
+"random" "WilMA" "window-to-aisle-half-block" "window-to-aisle-alternate" "reverse-pyramid" "reverse-pyramid-half-zone" "back-to-front-5-zones" "back-to-front-mix" "front-to-back" "half-block-back-to-front" "half-block-mix-1" "half-block-mix-2" "by-row-front-to-back" "by-row-back-to-front" "by-half-row-front-to-back" "by-half-row-back-to-front" "rotating-zone-5-zones" "modified-optimal" "non-traditional-method" "back-to-front-by-seating-order" "seat-descending-order" "Steffen-method" "Steffen-variation"
+0
 
 SLIDER
-19
-174
-169
-207
+20
+145
+270
+178
 percent-full
 percent-full
 0
@@ -656,12 +816,23 @@ NIL
 HORIZONTAL
 
 MONITOR
-34
-454
-127
-499
-NIL
-count turtles
+20
+450
+270
+495
+average time out of seat
+mean [time-out-of-seat] of turtles
+17
+1
+11
+
+MONITOR
+20
+505
+270
+550
+max time out of seat
+max [time-out-of-seat] of turtles
 17
 1
 11
@@ -669,39 +840,68 @@ count turtles
 @#$#@#$#@
 ## WHAT IS IT?
 
-(a general understanding of what the model is trying to show or explain)
+This model is inspired by the process of boarding an airplane, which many people frequently occur during travel but might not think about. Specifically, it aims to model the overall happiness of passengers and the total time taken to board the plane. The boarding strategies and overall use of the model is based on an article written [Delcea and colleagues](https://www.mdpi.com/2071-1050/10/6/1879/htm). 
+
+Airplane boarding has many different strategies, and there are many variables involved beyond the boarding strategy such as the full-ness of the airplane, the seating configuration of the plane, and the quantity of people putting carry-on bags in the overhead bins.
 
 ## HOW IT WORKS
 
-(what rules the agents use to create the overall behavior of the model)
+This model creates an airport with attached airplane and people seated in the airport waiting to board the plane. Each person has an assigned seat and a boarding group based on their seat and the boarding strategy. At each tick, the people move towards their seats when it is their turn. If there is someone in the patch they'd like to move to, they of course must wait for the person to vacate that patch.
+
+As they wait in the airport, they get unhappy, but at a slow rate. They are comfortable, can stretch out their legs, and aren't cramped yet. When they get onto the plane, they are initially happy and gain happiness because of their excitement and anticipation over the upcoming flight. If they have been waiting on the plane for too long, they begin to get unhappy at a higher rate. They are tired of being cramped and want to either get off the plane or get into the air.
 
 ## HOW TO USE IT
 
-(how to use the model, including a description of each of the items in the Interface tab)
+1. Set the probability of each passenger having a carry-on bag
+2. Select how full the airplane will be
+3. Choose a type of plane
+4. Choose a boarding strategy
+5. Press the SETUP button
+6. Press the GO button
+7. Watch the people move onto the plane, noting any bottlenecks in the system
+8. Watch the plots and monitors to see how people are happy and unhappy
+9. Try again with tweaked paramaters
+
+### Parameters
+PROBABILITY-CARRY-ON: The probability any passenger will have a carry-on bag
+PERCENT-FULL: The percentage of available seats that will be filled by passengers
+PLANE-TYPE: The seating configuration of the airplane to try to board
+BOARDING-STRATEGY: The strategy (by assigning groups) of getting the people on the plane
+
+### Plots and Monitors
+
+% OF ORIGINAL HAPPINESS: The percentage of the original happiness had by the passengers remaining in the system
+AVERAGE TIME OUT OF SEAT: The average amount of time a turtle in the system has spent between their airport seat and airplane seat
+MAX TIME OUT OF SEAT: The maximum amount of time any turtle in the system has spent between their airport seat and airplane seat
 
 ## THINGS TO NOTICE
 
-(suggested things for the user to notice while running the model)
+Can you figure out where the delays (bottlenecks) are in the system? Where are the people having to wait?
+
+What are drawbacks about the boarding strategy that you think could be improved? Is there another strategy on the list that implements that strategy?
 
 ## THINGS TO TRY
 
-(suggested things for the user to try to do (move sliders, switches, etc.) with the model)
+Try choosing 2 or 3 boarding strategies that you like. Run them on different airplane models. Is one always best? Worst?
+
+Try altering the baggage probability and full-ness of the plane. How does this affect the results? Is it always expected?
 
 ## EXTENDING THE MODEL
 
-(suggested things to add or change in the Code tab to make the model more complicated, detailed, accurate, etc.)
+Could we add more (or event a custom) boarding strategy?
 
-## NETLOGO FEATURES
+Could you add people going to the wrong seat? 
 
-(interesting or unusual features of NetLogo that the model uses, particularly in the Code tab; or where workarounds were needed for missing features)
+Could you add elite members, families, military members, etc. that always needed to board early and potentially would be sitting together?
 
-## RELATED MODELS
-
-(models in the NetLogo Models Library and elsewhere which are of related interest)
 
 ## CREDITS AND REFERENCES
 
-(a reference to the model's URL on the web if it has one, as well as any other necessary credits, citations, and links)
+This model was based on research done and boarding strategies used in this aricle:
+
+Delcea, Camelia and Cotfas, Liviu-Adrian and Paun, Ramona. "Agent-Based Evaluation of the Airplane Boarding Strategies’ Efficiency and Sustainability." Sustainability, 10, 6, 2018.
+
+https://www.mdpi.com/2071-1050/10/6/1879/htm
 @#$#@#$#@
 default
 true
@@ -1025,5 +1225,5 @@ true
 Line -7500403 true 150 150 90 180
 Line -7500403 true 150 150 210 180
 @#$#@#$#@
-0
+1
 @#$#@#$#@
